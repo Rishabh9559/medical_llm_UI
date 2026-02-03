@@ -56,16 +56,21 @@ cp .env.example .env
 Edit the `.env` file with your configuration:
 
 ```env
-MONGODB_URL=mongodb://localhost:27017
+MONGODB_URL=mongodb://localhost:27017  # Or use MongoDB Atlas connection string
 DATABASE_NAME=medical_llm_db
-LLM_API_URL=https://8000-dep-01kghvzqm6m9vdvjhjzmta1e19-d.cloudspaces.litng.ai/v1/chat/completions
-LLM_API_KEY=88f48d77-00b2-4090-8737-c2f7b1e5c64f
-LLM_MODEL=rishabh9559/medical-llama-3.2-3B
+LLM_API_URL=your-llm-api-url-here
+LLM_API_KEY=your-api-key-here
+LLM_MODEL=your-model-name-here
 ```
 
-#### Start MongoDB
+**Note:** You can use either a local MongoDB instance or MongoDB Atlas. For MongoDB Atlas, use a connection string like:
+```
+mongodb+srv://username:password@cluster.mongodb.net/?appName=YourApp
+```
 
-Make sure MongoDB is running:
+#### Start MongoDB (if using local MongoDB)
+
+If using a local MongoDB instance, make sure it's running:
 
 ```bash
 # For macOS with Homebrew

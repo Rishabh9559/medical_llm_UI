@@ -1,4 +1,4 @@
-import requests
+import httpx
 from typing import List, Dict
 from config import settings
 
@@ -7,8 +7,6 @@ class LLMService:
         self.url = settings.llm_api_url
         self.api_key = settings.llm_api_key
         self.model = settings.llm_model
-        self.session = requests.Session()
-        self.session.headers.update({"Authorization": f"Bearer {self.api_key}"})
     
     async def get_completion(self, messages: List[Dict[str, str]]) -> str:
         """
@@ -38,28 +36,33 @@ class LLMService:
                         "content": msg["content"]
                     })
             
-            response = self.session.post(
-                self.url,
-                json={
-                    "model": self.model,
-                    "messages": formatted_messages,
-                    "temperature": 0.2,
-                    "max_tokens": 512
-                },
-                timeout=30
-            )
-            
-            response.raise_for_status()
-            data = response.json()
-            
-            # Extract the assistant's response
-            if "choices" in data and len(data["choices"]) > 0:
-                return data["choices"][0]["message"]["content"]
-            else:
-                return "I apologize, but I couldn't generate a response."
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    self.url,
+                    json={
+                        "model": self.model,
+                        "messages": formatted_messages,
+                        "temperature": 0.2,
+                        "max_tokens": 512
+                    },
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                    timeout=30.0
+                )
                 
-        except requests.exceptions.RequestException as e:
-            print(f"LLM API Error: {e}")
+                response.raise_for_status()
+                data = response.json()
+                
+                # Extract the assistant's response
+                if "choices" in data and len(data["choices"]) > 0:
+                    return data["choices"][0]["message"]["content"]
+                else:
+                    return "I apologize, but I couldn't generate a response."
+                    
+        except httpx.HTTPStatusError as e:
+            print(f"LLM API HTTP Error: {e}")
+            return "I apologize, but I'm having trouble connecting to the medical assistant service. Please try again later."
+        except httpx.RequestError as e:
+            print(f"LLM API Request Error: {e}")
             return "I apologize, but I'm having trouble connecting to the medical assistant service. Please try again later."
         except Exception as e:
             print(f"Unexpected error: {e}")

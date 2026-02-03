@@ -1,10 +1,22 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from routes.chat import router as chat_router
 from services.db_service import db_service
 import uvicorn
 
-app = FastAPI(title="Medical LLM Assistant API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifespan events"""
+    # Startup
+    await db_service.connect()
+    print("Connected to MongoDB")
+    yield
+    # Shutdown
+    await db_service.close()
+    print("Closed MongoDB connection")
+
+app = FastAPI(title="Medical LLM Assistant API", lifespan=lifespan)
 
 # Configure CORS
 app.add_middleware(
@@ -17,18 +29,6 @@ app.add_middleware(
 
 # Include routers
 app.include_router(chat_router)
-
-@app.on_event("startup")
-async def startup_event():
-    """Connect to database on startup"""
-    await db_service.connect()
-    print("Connected to MongoDB")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Close database connection on shutdown"""
-    await db_service.close()
-    print("Closed MongoDB connection")
 
 @app.get("/")
 async def root():

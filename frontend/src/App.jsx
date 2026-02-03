@@ -68,12 +68,21 @@ function App() {
   };
 
   const handleSendMessage = async (content) => {
-    if (!activeChat) {
-      // Create a new chat if none is active
-      await handleNewChat();
-      // Wait a bit for the state to update
-      setTimeout(() => handleSendMessage(content), 100);
-      return;
+    let chatToUse = activeChat;
+    
+    // Create a new chat if none is active
+    if (!chatToUse) {
+      try {
+        const newChat = await chatAPI.createChat();
+        setChats([newChat, ...chats]);
+        setActiveChat(newChat);
+        setMessages([]);
+        chatToUse = newChat;
+      } catch (error) {
+        console.error('Error creating new chat:', error);
+        alert('Failed to create new chat');
+        return;
+      }
     }
 
     // Add user message to UI immediately
@@ -82,11 +91,11 @@ function App() {
       content: content,
       timestamp: new Date().toISOString(),
     };
-    setMessages([...messages, userMessage]);
+    setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
     try {
-      const response = await chatAPI.sendMessage(activeChat.id, content);
+      const response = await chatAPI.sendMessage(chatToUse.id, content);
       
       // Add assistant response
       setMessages(prev => [...prev, response]);
@@ -97,7 +106,7 @@ function App() {
       console.error('Error sending message:', error);
       alert('Failed to send message. Please try again.');
       // Remove the user message if the request failed
-      setMessages(messages);
+      setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
     }

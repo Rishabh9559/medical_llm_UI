@@ -63,10 +63,7 @@ async def send_message(chat_id: str, message: MessageRequest):
     if len(chat.get("messages", [])) == 0:
         # Use first 50 chars of message as title
         title = message.content[:50] + "..." if len(message.content) > 50 else message.content
-        await db_service.db.chats.update_one(
-            {"_id": chat["_id"]},
-            {"$set": {"title": title}}
-        )
+        await db_service.update_chat_title(chat_id, title)
     
     # Get last 4 messages for context
     recent_messages = await db_service.get_recent_messages(chat_id, count=4)

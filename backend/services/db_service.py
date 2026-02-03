@@ -76,6 +76,17 @@ class DatabaseService:
         except Exception:
             return False
     
+    async def update_chat_title(self, chat_id: str, title: str) -> bool:
+        """Update the title of a chat"""
+        try:
+            result = await self.db.chats.update_one(
+                {"_id": ObjectId(chat_id)},
+                {"$set": {"title": title, "updated_at": datetime.utcnow()}}
+            )
+            return result.modified_count > 0
+        except Exception:
+            return False
+    
     async def get_recent_messages(self, chat_id: str, count: int = 4) -> List[dict]:
         """Get the last N messages from a chat"""
         try:
