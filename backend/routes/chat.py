@@ -1,0 +1,94 @@
+from fastapi import APIRouter, HTTPException
+from typing import List
+from models.chat import (
+    ChatResponse, ChatListItem, MessageRequest, 
+    MessageResponse, Message
+)
+from services.db_service import db_service
+from services.llm_service import llm_service
+from datetime import datetime
+
+router = APIRouter(prefix="/api/chats", tags=["chats"])
+
+@router.post("", response_model=ChatResponse)
+async def create_chat():
+    """Create a new chat"""
+    # Start with a default title, will be updated with first message
+    chat_id = await db_service.create_chat("New Chat")
+    chat = await db_service.get_chat(chat_id)
+    
+    if not chat:
+        raise HTTPException(status_code=500, detail="Failed to create chat")
+    
+    return ChatResponse(**chat)
+
+@router.get("", response_model=List[ChatListItem])
+async def get_all_chats():
+    """Get all chats for the sidebar"""
+    chats = await db_service.get_all_chats()
+    return [ChatListItem(**chat) for chat in chats]
+
+@router.get("/{chat_id}", response_model=ChatResponse)
+async def get_chat(chat_id: str):
+    """Get a specific chat with all messages"""
+    chat = await db_service.get_chat(chat_id)
+    
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    
+    return ChatResponse(**chat)
+
+@router.delete("/{chat_id}")
+async def delete_chat(chat_id: str):
+    """Delete a chat"""
+    success = await db_service.delete_chat(chat_id)
+    
+    if not success:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    
+    return {"message": "Chat deleted successfully"}
+
+@router.post("/{chat_id}/messages", response_model=MessageResponse)
+async def send_message(chat_id: str, message: MessageRequest):
+    """Send a message and get LLM response"""
+    # Verify chat exists
+    chat = await db_service.get_chat(chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    
+    # Save user message
+    await db_service.add_message(chat_id, "user", message.content)
+    
+    # Update chat title if this is the first message
+    if len(chat.get("messages", [])) == 0:
+        # Use first 50 chars of message as title
+        title = message.content[:50] + "..." if len(message.content) > 50 else message.content
+        await db_service.db.chats.update_one(
+            {"_id": chat["_id"]},
+            {"$set": {"title": title}}
+        )
+    
+    # Get last 4 messages for context
+    recent_messages = await db_service.get_recent_messages(chat_id, count=4)
+    
+    # Format messages for LLM
+    formatted_messages = [
+        {"role": msg["role"], "content": msg["content"]}
+        for msg in recent_messages
+    ]
+    
+    # Add current message if not already in recent messages
+    if not formatted_messages or formatted_messages[-1]["content"] != message.content:
+        formatted_messages.append({"role": "user", "content": message.content})
+    
+    # Get LLM response
+    assistant_response = await llm_service.get_completion(formatted_messages)
+    
+    # Save assistant message
+    await db_service.add_message(chat_id, "assistant", assistant_response)
+    
+    return MessageResponse(
+        role="assistant",
+        content=assistant_response,
+        timestamp=datetime.utcnow()
+    )
