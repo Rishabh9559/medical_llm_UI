@@ -7,6 +7,11 @@ class Settings(BaseSettings):
     llm_api_key: str
     llm_model: str = "rishabh9559/medical-llama-3.2-3B"
     
+    # JWT Settings
+    secret_key: str = "your-super-secret-key-change-in-production"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 1440  # 24 hours
+    
     class Config:
         env_file = ".env"
 

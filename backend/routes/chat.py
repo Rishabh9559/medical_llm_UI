@@ -1,21 +1,23 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from models.chat import (
     ChatResponse, ChatListItem, MessageRequest, 
     MessageResponse, Message
 )
+from models.user import TokenData
 from services.db_service import db_service
 from services.llm_service import llm_service
+from services.auth_service import get_current_user
 from datetime import datetime
 
 router = APIRouter(prefix="/api/chats", tags=["chats"])
 
 @router.post("", response_model=ChatResponse)
-async def create_chat():
-    """Create a new chat"""
+async def create_chat(current_user: TokenData = Depends(get_current_user)):
+    """Create a new chat for the authenticated user"""
     # Start with a default title, will be updated with first message
-    chat_id = await db_service.create_chat("New Chat")
-    chat = await db_service.get_chat(chat_id)
+    chat_id = await db_service.create_chat("New Chat", current_user.user_id)
+    chat = await db_service.get_chat(chat_id, current_user.user_id)
     
     if not chat:
         raise HTTPException(status_code=500, detail="Failed to create chat")
@@ -23,15 +25,15 @@ async def create_chat():
     return ChatResponse(**chat)
 
 @router.get("", response_model=List[ChatListItem])
-async def get_all_chats():
-    """Get all chats for the sidebar"""
-    chats = await db_service.get_all_chats()
+async def get_all_chats(current_user: TokenData = Depends(get_current_user)):
+    """Get all chats for the authenticated user (for sidebar)"""
+    chats = await db_service.get_all_chats(current_user.user_id)
     return [ChatListItem(**chat) for chat in chats]
 
 @router.get("/{chat_id}", response_model=ChatResponse)
-async def get_chat(chat_id: str):
-    """Get a specific chat with all messages"""
-    chat = await db_service.get_chat(chat_id)
+async def get_chat(chat_id: str, current_user: TokenData = Depends(get_current_user)):
+    """Get a specific chat with all messages (only if owned by user)"""
+    chat = await db_service.get_chat(chat_id, current_user.user_id)
     
     if not chat:
         raise HTTPException(status_code=404, detail="Chat not found")
@@ -39,9 +41,9 @@ async def get_chat(chat_id: str):
     return ChatResponse(**chat)
 
 @router.delete("/{chat_id}")
-async def delete_chat(chat_id: str):
-    """Delete a chat"""
-    success = await db_service.delete_chat(chat_id)
+async def delete_chat(chat_id: str, current_user: TokenData = Depends(get_current_user)):
+    """Delete a chat (only if owned by user)"""
+    success = await db_service.delete_chat(chat_id, current_user.user_id)
     
     if not success:
         raise HTTPException(status_code=404, detail="Chat not found")
@@ -49,10 +51,14 @@ async def delete_chat(chat_id: str):
     return {"message": "Chat deleted successfully"}
 
 @router.post("/{chat_id}/messages", response_model=MessageResponse)
-async def send_message(chat_id: str, message: MessageRequest):
+async def send_message(
+    chat_id: str, 
+    message: MessageRequest, 
+    current_user: TokenData = Depends(get_current_user)
+):
     """Send a message and get LLM response"""
-    # Verify chat exists
-    chat = await db_service.get_chat(chat_id)
+    # Verify chat exists and belongs to user
+    chat = await db_service.get_chat(chat_id, current_user.user_id)
     if not chat:
         raise HTTPException(status_code=404, detail="Chat not found")
     

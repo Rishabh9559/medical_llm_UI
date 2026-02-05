@@ -1,21 +1,25 @@
 # Medical LLM Chatbot UI
 
-A full-stack ChatGPT-like chatbot interface for a medical LLM assistant with chat history management and MongoDB storage.
+A full-stack ChatGPT-like chatbot interface for a medical LLM assistant with user authentication, chat history management, and MongoDB storage.
 
 ## Features
 
+- **User Authentication**: Secure login and signup with email/password
+- **JWT Token Authentication**: Secure API access with JSON Web Tokens
+- **Password Encryption**: Passwords hashed using bcrypt
 - **ChatGPT-like UI Interface**: Clean, modern chat interface with responsive design
-- **Chat History Management**: Sidebar showing previous conversations with timestamps
+- **User-Specific Chat History**: Each user sees only their own conversations
 - **Context-Aware Conversations**: Maintains context by sending last 4 messages to the LLM
-- **MongoDB Integration**: Persistent storage for all chats and messages
+- **MongoDB Integration**: Persistent storage for users, chats, and messages
 - **Real-time Responses**: Typing indicators and auto-scroll to latest messages
 - **Chat Management**: Create, view, and delete chat conversations
 
 ## Tech Stack
 
-- **Frontend**: React.js with Vite
+- **Frontend**: React.js with Vite, React Router
 - **Backend**: Python FastAPI
 - **Database**: MongoDB
+- **Authentication**: JWT tokens, bcrypt password hashing
 - **LLM API**: Custom medical LLM endpoint
 
 ## Prerequisites
@@ -61,6 +65,11 @@ DATABASE_NAME=medical_llm_db
 LLM_API_URL=your-llm-api-url-here
 LLM_API_KEY=your-api-key-here
 LLM_MODEL=your-model-name-here
+
+# JWT Settings (IMPORTANT: Change SECRET_KEY in production!)
+SECRET_KEY=your-super-secret-key-change-this-in-production
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
 ```
 
 **Note:** You can use either a local MongoDB instance or MongoDB Atlas. For MongoDB Atlas, use a connection string like:
@@ -140,12 +149,25 @@ The frontend development server will start at `http://localhost:5173`
 
 The backend provides the following REST API endpoints:
 
-### Chats
+### Authentication
+
+- `POST /api/auth/signup` - Register a new user
+  - Request body: `{"email": "user@example.com", "password": "password", "name": "User Name"}`
+  - Response: `{"access_token": "jwt_token", "token_type": "bearer", "user": {...}}`
+
+- `POST /api/auth/login` - Login user
+  - Request body: `{"email": "user@example.com", "password": "password"}`
+  - Response: `{"access_token": "jwt_token", "token_type": "bearer", "user": {...}}`
+
+- `GET /api/auth/me` - Get current user info (requires authentication)
+  - Response: User object
+
+### Chats (All endpoints require authentication)
 
 - `POST /api/chats` - Create a new chat
   - Response: Chat object with `id`, `title`, `created_at`, `updated_at`, `messages`
 
-- `GET /api/chats` - Get all chats (for sidebar)
+- `GET /api/chats` - Get all chats for current user (for sidebar)
   - Response: Array of chat objects without messages
 
 - `GET /api/chats/{chat_id}` - Get a specific chat with all messages
@@ -154,7 +176,7 @@ The backend provides the following REST API endpoints:
 - `DELETE /api/chats/{chat_id}` - Delete a chat
   - Response: Success message
 
-### Messages
+### Messages (Requires authentication)
 
 - `POST /api/chats/{chat_id}/messages` - Send a message and get LLM response
   - Request body: `{"content": "your message"}`
@@ -167,12 +189,15 @@ medical_llm_UI/
 ├── backend/
 │   ├── main.py              # FastAPI app entry point
 │   ├── requirements.txt     # Python dependencies
-│   ├── config.py            # Configuration (DB, API keys)
+│   ├── config.py            # Configuration (DB, API keys, JWT)
 │   ├── models/
-│   │   └── chat.py          # Pydantic models
+│   │   ├── chat.py          # Chat Pydantic models
+│   │   └── user.py          # User Pydantic models
 │   ├── routes/
+│   │   ├── auth.py          # Authentication routes
 │   │   └── chat.py          # Chat API routes
 │   ├── services/
+│   │   ├── auth_service.py  # JWT & password utilities
 │   │   ├── llm_service.py   # LLM API integration
 │   │   └── db_service.py    # MongoDB operations
 │   └── .env.example         # Environment variables template

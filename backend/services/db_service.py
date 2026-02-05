@@ -8,21 +8,75 @@ class DatabaseService:
     def __init__(self):
         self.client: Optional[AsyncIOMotorClient] = None
         self.db = None
+        self._indexes_created = False
         
     async def connect(self):
         """Connect to MongoDB"""
-        self.client = AsyncIOMotorClient(settings.mongodb_url)
+        self.client = AsyncIOMotorClient(
+            settings.mongodb_url,
+            tls=True,
+            tlsAllowInvalidCertificates=True,
+            serverSelectionTimeoutMS=30000,  # Increased timeout
+            connectTimeoutMS=30000,
+            socketTimeoutMS=30000,
+            retryWrites=True,
+            retryReads=True,
+            maxPoolSize=10,
+            minPoolSize=1
+        )
         self.db = self.client[settings.database_name]
+        
+    async def _ensure_indexes(self):
+        """Create indexes if not already created"""
+        if not self._indexes_created:
+            try:
+                await self.db.users.create_index("email", unique=True)
+                self._indexes_created = True
+            except Exception as e:
+                print(f"Warning: Could not create indexes: {e}")
         
     async def close(self):
         """Close MongoDB connection"""
         if self.client:
             self.client.close()
     
-    async def create_chat(self, title: str) -> str:
+    # ============ User Operations ============
+    
+    async def create_user(self, email: str, name: str, hashed_password: str) -> str:
+        """Create a new user and return their ID"""
+        user_doc = {
+            "email": email,
+            "name": name,
+            "hashed_password": hashed_password,
+            "created_at": datetime.utcnow()
+        }
+        result = await self.db.users.insert_one(user_doc)
+        return str(result.inserted_id)
+    
+    async def get_user_by_email(self, email: str) -> Optional[dict]:
+        """Get a user by email"""
+        user = await self.db.users.find_one({"email": email})
+        if user:
+            user["id"] = str(user.pop("_id"))
+        return user
+    
+    async def get_user_by_id(self, user_id: str) -> Optional[dict]:
+        """Get a user by ID"""
+        try:
+            user = await self.db.users.find_one({"_id": ObjectId(user_id)})
+            if user:
+                user["id"] = str(user.pop("_id"))
+            return user
+        except Exception:
+            return None
+    
+    # ============ Chat Operations ============
+    
+    async def create_chat(self, title: str, user_id: str) -> str:
         """Create a new chat and return its ID"""
         chat_doc = {
             "title": title,
+            "user_id": user_id,
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
             "messages": []
@@ -30,29 +84,38 @@ class DatabaseService:
         result = await self.db.chats.insert_one(chat_doc)
         return str(result.inserted_id)
     
-    async def get_all_chats(self) -> List[dict]:
-        """Get all chats (without messages for efficiency)"""
+    async def get_all_chats(self, user_id: str) -> List[dict]:
+        """Get all chats for a specific user (without messages for efficiency)"""
         chats = []
-        cursor = self.db.chats.find({}, {"messages": 0}).sort("updated_at", -1)
+        cursor = self.db.chats.find(
+            {"user_id": user_id}, 
+            {"messages": 0}
+        ).sort("updated_at", -1)
         async for chat in cursor:
             chat["id"] = str(chat.pop("_id"))
             chats.append(chat)
         return chats
     
-    async def get_chat(self, chat_id: str) -> Optional[dict]:
+    async def get_chat(self, chat_id: str, user_id: str = None) -> Optional[dict]:
         """Get a specific chat with all messages"""
         try:
-            chat = await self.db.chats.find_one({"_id": ObjectId(chat_id)})
+            query = {"_id": ObjectId(chat_id)}
+            if user_id:
+                query["user_id"] = user_id
+            chat = await self.db.chats.find_one(query)
             if chat:
                 chat["id"] = str(chat.pop("_id"))
             return chat
         except Exception:
             return None
     
-    async def delete_chat(self, chat_id: str) -> bool:
-        """Delete a chat"""
+    async def delete_chat(self, chat_id: str, user_id: str) -> bool:
+        """Delete a chat (only if owned by user)"""
         try:
-            result = await self.db.chats.delete_one({"_id": ObjectId(chat_id)})
+            result = await self.db.chats.delete_one({
+                "_id": ObjectId(chat_id),
+                "user_id": user_id
+            })
             return result.deleted_count > 0
         except Exception:
             return False

@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
-import { chatAPI } from './services/api';
+import Login from './components/Login';
+import Signup from './components/Signup';
+import { chatAPI, authAPI, getUser } from './services/api';
 import './styles/App.css';
 
-function App() {
+// Protected Route Component
+const ProtectedRoute = ({ children, user }) => {
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
+// Main Chat Component
+const ChatApp = ({ user, onLogout }) => {
   const [chats, setChats] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -120,6 +132,8 @@ function App() {
         onChatSelect={handleChatSelect}
         onNewChat={handleNewChat}
         onDeleteChat={handleDeleteChat}
+        user={user}
+        onLogout={onLogout}
       />
       <ChatArea
         activeChat={activeChat}
@@ -128,6 +142,51 @@ function App() {
         isLoading={isLoading}
       />
     </div>
+  );
+};
+
+function App() {
+  const [user, setUser] = useState(getUser());
+
+  const handleLogin = (userData) => {
+    setUser(userData);
+  };
+
+  const handleSignup = (userData) => {
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    authAPI.logout();
+    setUser(null);
+  };
+
+  return (
+    <Router>
+      <Routes>
+        <Route 
+          path="/login" 
+          element={
+            user ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />
+          } 
+        />
+        <Route 
+          path="/signup" 
+          element={
+            user ? <Navigate to="/" replace /> : <Signup onSignup={handleSignup} />
+          } 
+        />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute user={user}>
+              <ChatApp user={user} onLogout={handleLogout} />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }
 

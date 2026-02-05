@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from routes.chat import router as chat_router
+from routes.auth import router as auth_router
 from services.db_service import db_service
 import uvicorn
 
@@ -28,6 +29,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth_router)
 app.include_router(chat_router)
 
 @app.get("/")
