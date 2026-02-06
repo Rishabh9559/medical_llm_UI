@@ -57,8 +57,23 @@ api.interceptors.response.use(
 
 // Auth API
 export const authAPI = {
-  signup: async (email, password, name) => {
-    const response = await api.post('/api/auth/signup', { email, password, name });
+  // Send OTP for signup
+  sendOTP: async (email, password, name, phone = null) => {
+    const response = await api.post('/api/auth/send-otp', { email, password, name, phone });
+    return response.data;
+  },
+
+  // Verify OTP and complete signup
+  verifyOTP: async (email, otp) => {
+    const response = await api.post('/api/auth/verify-otp', { email, otp });
+    const { access_token, user } = response.data;
+    setAuthData(access_token, user);
+    return response.data;
+  },
+
+  // Legacy signup (without OTP)
+  signup: async (email, password, name, phone = null) => {
+    const response = await api.post('/api/auth/signup', { email, password, name, phone });
     const { access_token, user } = response.data;
     setAuthData(access_token, user);
     return response.data;
@@ -68,6 +83,12 @@ export const authAPI = {
     const response = await api.post('/api/auth/login', { email, password });
     const { access_token, user } = response.data;
     setAuthData(access_token, user);
+    return response.data;
+  },
+
+  // Forgot password
+  forgotPassword: async (email) => {
+    const response = await api.post('/api/auth/forgot-password', { email });
     return response.data;
   },
 
@@ -115,6 +136,121 @@ export const chatAPI = {
     const response = await api.post(`/api/chats/${chatId}/messages`, {
       content,
     });
+    return response.data;
+  },
+};
+
+// Profile API
+export const profileAPI = {
+  // Get current user profile
+  getProfile: async () => {
+    const response = await api.get('/api/profile');
+    return response.data;
+  },
+
+  // Update profile
+  updateProfile: async (data) => {
+    const response = await api.put('/api/profile', data);
+    // Update local storage with new user data
+    const currentUser = getUser();
+    if (currentUser) {
+      const updatedUser = { ...currentUser, ...data };
+      localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
+    }
+    return response.data;
+  },
+
+  // Update password
+  updatePassword: async (currentPassword, newPassword) => {
+    const response = await api.put('/api/profile/password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+    return response.data;
+  },
+};
+
+// Appointments API
+export const appointmentsAPI = {
+  // Get all doctors
+  getDoctors: async (specialization = null) => {
+    const params = specialization ? { specialization } : {};
+    const response = await api.get('/api/appointments/doctors', { params });
+    return response.data;
+  },
+
+  // Get single doctor
+  getDoctor: async (doctorId) => {
+    const response = await api.get(`/api/appointments/doctors/${doctorId}`);
+    return response.data;
+  },
+
+  // Get all specializations
+  getSpecializations: async () => {
+    const response = await api.get('/api/appointments/specializations');
+    return response.data;
+  },
+
+  // Create appointment
+  createAppointment: async (appointmentData) => {
+    const response = await api.post('/api/appointments', appointmentData);
+    return response.data;
+  },
+
+  // Get user appointments
+  getAppointments: async (statusFilter = null) => {
+    const params = statusFilter ? { status_filter: statusFilter } : {};
+    const response = await api.get('/api/appointments', { params });
+    return response.data;
+  },
+
+  // Get single appointment
+  getAppointment: async (appointmentId) => {
+    const response = await api.get(`/api/appointments/${appointmentId}`);
+    return response.data;
+  },
+
+  // Update appointment
+  updateAppointment: async (appointmentId, updateData) => {
+    const response = await api.put(`/api/appointments/${appointmentId}`, updateData);
+    return response.data;
+  },
+
+  // Cancel appointment
+  cancelAppointment: async (appointmentId) => {
+    const response = await api.delete(`/api/appointments/${appointmentId}`);
+    return response.data;
+  },
+};
+
+// Hospitals API
+export const hospitalsAPI = {
+  // Get all hospitals
+  getHospitals: async (filters = {}) => {
+    const params = {};
+    if (filters.city) params.city = filters.city;
+    if (filters.specialization) params.specialization = filters.specialization;
+    if (filters.emergencyOnly) params.emergency_only = true;
+    
+    const response = await api.get('/api/hospitals', { params });
+    return response.data;
+  },
+
+  // Get single hospital
+  getHospital: async (hospitalId) => {
+    const response = await api.get(`/api/hospitals/${hospitalId}`);
+    return response.data;
+  },
+
+  // Get all cities
+  getCities: async () => {
+    const response = await api.get('/api/hospitals/cities');
+    return response.data;
+  },
+
+  // Get all specializations
+  getSpecializations: async () => {
+    const response = await api.get('/api/hospitals/specializations');
     return response.data;
   },
 };

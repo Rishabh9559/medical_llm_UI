@@ -8,9 +8,13 @@ class Settings(BaseSettings):
     llm_model: str = "rishabh9559/medical-llama-3.2-3B"
     
     # JWT Settings
-    secret_key: str = "your-super-secret-key-change-in-production"
+    secret_key: str = "3zYHS5tyrfj29VxZCgJHmNJktdgq1nhNaSXHYrnloc4"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440  # 24 hours
+    
+    # Email Settings
+    gmail_user: str = ""
+    gmail_pass: str = ""
     
     class Config:
         env_file = ".env"
