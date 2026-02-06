@@ -1,8 +1,6 @@
-# Medical LLM Chatbot UI
+# Medical LLM Chatbot
 
-A full-stack ChatGPT-like chatbot interface for a medical LLM assistant with user authentication, chat history management, and MongoDB storage.
 
-## Features
 
 ### Core Features
 - **User Authentication**: Secure login and signup with email/password
@@ -10,9 +8,9 @@ A full-stack ChatGPT-like chatbot interface for a medical LLM assistant with use
 - **Forgot Password**: Password reset via email with auto-generated secure password
 - **JWT Token Authentication**: Secure API access with JSON Web Tokens
 - **Password Encryption**: Passwords hashed using bcrypt
-- **ChatGPT-like UI Interface**: Clean, modern chat interface with responsive design
+- **AI UI Interface**: Clean, modern chat interface with responsive design
 - **User-Specific Chat History**: Each user sees only their own conversations
-- **Context-Aware Conversations**: Maintains context by sending last 4 messages to the LLM
+- **Context-Aware Conversations**: Maintains context by sending last 3 messages to the LLM
 - **MongoDB Integration**: Persistent storage for users, chats, and messages
 - **Real-time Responses**: Typing indicators and auto-scroll to latest messages
 - **Chat Management**: Create, view, and delete chat conversations
@@ -36,7 +34,7 @@ The AI assistant can now perform actions through natural conversation:
 - "Change my password" → Guides you through password update
 - "Show hospitals in Mumbai with emergency services" → Filtered hospital list
 
-See [USER_GUIDE.md](USER_GUIDE.md) for detailed usage examples and [AI_CHAT_FEATURES.md](AI_CHAT_FEATURES.md) for technical documentation.
+
 
 ## Tech Stack
 
@@ -79,7 +77,7 @@ pip install -r requirements.txt
 Create a `.env` file in the `backend` directory:
 
 ```bash
-cp .env.example .env
+cp .env
 ```
 
 Edit the `.env` file with your configuration:
@@ -148,7 +146,7 @@ npm install
 Create a `.env` file in the `frontend` directory:
 
 ```bash
-cp .env.example .env
+cp .env
 ```
 
 Edit the `.env` file:
@@ -339,24 +337,7 @@ Automatic email notifications are sent for:
 - **Appointment Cancellation**: Notification email when appointment is cancelled
 - **Password Reset**: New auto-generated password sent to email
 
-### Message Storage Schema
 
-**Chat Document:**
-```javascript
-{
-  _id: ObjectId,
-  title: String,
-  created_at: DateTime,
-  updated_at: DateTime,
-  messages: [
-    {
-      role: String,  // "user" or "assistant"
-      content: String,
-      timestamp: DateTime
-    }
-  ]
-}
-```
 
 ## Development
 
