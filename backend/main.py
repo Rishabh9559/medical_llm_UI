@@ -25,7 +25,7 @@ app = FastAPI(title="Medical Healthcare API", lifespan=lifespan)
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Vite and CRA default ports
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "https://medical-ai-agent.netlify.app"],  # Vite and CRA default ports
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
