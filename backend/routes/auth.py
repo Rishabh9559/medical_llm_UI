@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from models.user import UserCreate, UserLogin, Token, UserResponse, SendOTPRequest, VerifyOTPRequest, ForgotPasswordRequest
+from models.user import UserCreate, UserLogin, Token, UserResponse, ForgotPasswordRequest
 from services.db_service import db_service
 from services.email_service import email_service
 from services.auth_service import (
@@ -13,96 +13,6 @@ from datetime import timedelta
 from config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
-
-@router.post("/send-otp")
-async def send_signup_otp(user_data: SendOTPRequest):
-    """Send OTP for signup verification"""
-    # Check if user already exists
-    existing_user = await db_service.get_user_by_email(user_data.email)
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
-    
-    # Generate OTP
-    otp = email_service.generate_otp()
-    
-    # Store OTP with user data
-    email_service.store_otp(
-        email=user_data.email,
-        otp=otp,
-        user_data={
-            "email": user_data.email,
-            "name": user_data.name,
-            "password": user_data.password,
-            "phone": user_data.phone
-        }
-    )
-    
-    # Send OTP email
-    email_sent = await email_service.send_signup_otp(
-        email=user_data.email,
-        name=user_data.name,
-        otp=otp
-    )
-    
-    if not email_sent:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to send OTP email. Please try again."
-        )
-    
-    return {"message": "OTP sent successfully to your email"}
-
-@router.post("/verify-otp", response_model=Token)
-async def verify_otp_and_signup(otp_data: VerifyOTPRequest):
-    """Verify OTP and complete signup"""
-    # Verify OTP
-    is_valid, user_data = email_service.verify_otp(otp_data.email, otp_data.otp)
-    
-    if not is_valid or not user_data:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired OTP"
-        )
-    
-    # Hash the password
-    hashed_password = get_password_hash(user_data["password"])
-    
-    # Create user in database
-    user_id = await db_service.create_user(
-        email=user_data["email"],
-        name=user_data["name"],
-        hashed_password=hashed_password,
-        phone=user_data.get("phone")
-    )
-    
-    # Get the created user
-    user = await db_service.get_user_by_id(user_id)
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create user"
-        )
-    
-    # Create access token
-    access_token = create_access_token(
-        data={"sub": user["id"], "email": user["email"]},
-        expires_delta=timedelta(minutes=settings.access_token_expire_minutes)
-    )
-    
-    return Token(
-        access_token=access_token,
-        user=UserResponse(
-            id=user["id"],
-            email=user["email"],
-            name=user["name"],
-            phone=user.get("phone"),
-            created_at=user["created_at"]
-        )
-    )
 
 @router.post("/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest):

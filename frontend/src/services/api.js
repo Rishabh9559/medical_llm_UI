@@ -57,21 +57,7 @@ api.interceptors.response.use(
 
 // Auth API
 export const authAPI = {
-  // Send OTP for signup
-  sendOTP: async (email, password, name, phone = null) => {
-    const response = await api.post('/api/auth/send-otp', { email, password, name, phone });
-    return response.data;
-  },
-
-  // Verify OTP and complete signup
-  verifyOTP: async (email, otp) => {
-    const response = await api.post('/api/auth/verify-otp', { email, otp });
-    const { access_token, user } = response.data;
-    setAuthData(access_token, user);
-    return response.data;
-  },
-
-  // Legacy signup (without OTP)
+  // Signup
   signup: async (email, password, name, phone = null) => {
     const response = await api.post('/api/auth/signup', { email, password, name, phone });
     const { access_token, user } = response.data;
