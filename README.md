@@ -1,4 +1,4 @@
-# Medical LLM Chatbot
+# Appoinment Booking AI Agent and Medical LLM Chatbot
 
 
 
