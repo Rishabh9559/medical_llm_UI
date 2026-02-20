@@ -12,6 +12,8 @@ const api = axios.create({
 // Token management
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
+const LOGIN_TIME_KEY = 'auth_login_time';
+const TOKEN_EXPIRY_MS = 2 * 24 * 60 * 60 * 1000; // 2 days in milliseconds
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
 export const getUser = () => {
@@ -19,14 +21,23 @@ export const getUser = () => {
   return user ? JSON.parse(user) : null;
 };
 
+export const isTokenExpired = () => {
+  const loginTime = localStorage.getItem(LOGIN_TIME_KEY);
+  if (!loginTime) return true;
+  const elapsed = Date.now() - parseInt(loginTime, 10);
+  return elapsed >= TOKEN_EXPIRY_MS;
+};
+
 export const setAuthData = (token, user) => {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+  localStorage.setItem(LOGIN_TIME_KEY, Date.now().toString());
 };
 
 export const clearAuthData = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(LOGIN_TIME_KEY);
 };
 
 // Add token to requests
@@ -47,7 +58,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Skip redirect for auth endpoints (login/signup failures should show error, not reload)
+    const isAuthEndpoint = error.config?.url?.startsWith('/api/auth/');
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       clearAuthData();
       window.location.href = '/login';
     }

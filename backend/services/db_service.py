@@ -45,7 +45,7 @@ class DatabaseService:
     async def create_user(self, email: str, name: str, hashed_password: str, phone: str = None) -> str:
         """Create a new user and return their ID"""
         user_doc = {
-            "email": email,
+            "email": email.lower(),
             "name": name,
             "hashed_password": hashed_password,
             "phone": phone,
@@ -55,8 +55,8 @@ class DatabaseService:
         return str(result.inserted_id)
     
     async def get_user_by_email(self, email: str) -> Optional[dict]:
-        """Get a user by email"""
-        user = await self.db.users.find_one({"email": email})
+        """Get a user by email (case-insensitive)"""
+        user = await self.db.users.find_one({"email": email.lower()})
         if user:
             user["id"] = str(user.pop("_id"))
         return user
