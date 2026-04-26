@@ -5,6 +5,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional
 from datetime import datetime, timedelta
+import zoneinfo
 from config import settings
 
 
@@ -52,7 +53,7 @@ class EmailService:
         """Store OTP with expiry time (5 minutes)"""
         self.otp_storage[email] = {
             "otp": otp,
-            "expires_at": datetime.utcnow() + timedelta(minutes=5),
+            "expires_at": datetime.now(zoneinfo.ZoneInfo("Asia/Kolkata")) + timedelta(minutes=5),
             "user_data": user_data
         }
     
@@ -63,7 +64,7 @@ class EmailService:
         
         stored = self.otp_storage[email]
         
-        if datetime.utcnow() > stored["expires_at"]:
+        if datetime.now(zoneinfo.ZoneInfo("Asia/Kolkata")) > stored["expires_at"]:
             del self.otp_storage[email]
             return False, None
         

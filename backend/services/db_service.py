@@ -1,6 +1,7 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from typing import List, Optional
 from datetime import datetime
+import zoneinfo
 from bson import ObjectId
 from config import settings
 
@@ -49,7 +50,7 @@ class DatabaseService:
             "name": name,
             "hashed_password": hashed_password,
             "phone": phone,
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(zoneinfo.ZoneInfo("Asia/Kolkata"))
         }
         result = await self.db.users.insert_one(user_doc)
         return str(result.inserted_id)
@@ -89,8 +90,8 @@ class DatabaseService:
         chat_doc = {
             "title": title,
             "user_id": user_id,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
+            "created_at": datetime.now(zoneinfo.ZoneInfo("Asia/Kolkata")),
+            "updated_at": datetime.now(zoneinfo.ZoneInfo("Asia/Kolkata")),
             "messages": []
         }
         result = await self.db.chats.insert_one(chat_doc)
@@ -138,13 +139,13 @@ class DatabaseService:
             message = {
                 "role": role,
                 "content": content,
-                "timestamp": datetime.utcnow()
+                "timestamp": datetime.now(zoneinfo.ZoneInfo("Asia/Kolkata"))
             }
             result = await self.db.chats.update_one(
                 {"_id": ObjectId(chat_id)},
                 {
                     "$push": {"messages": message},
-                    "$set": {"updated_at": datetime.utcnow()}
+                    "$set": {"updated_at": datetime.now(zoneinfo.ZoneInfo("Asia/Kolkata"))}
                 }
             )
             return result.modified_count > 0
@@ -156,7 +157,7 @@ class DatabaseService:
         try:
             result = await self.db.chats.update_one(
                 {"_id": ObjectId(chat_id)},
-                {"$set": {"title": title, "updated_at": datetime.utcnow()}}
+                {"$set": {"title": title, "updated_at": datetime.now(zoneinfo.ZoneInfo("Asia/Kolkata"))}}
             )
             return result.modified_count > 0
         except Exception:
@@ -210,8 +211,8 @@ class DatabaseService:
             "appointment_time": appointment_time,
             "reason": reason,
             "status": "scheduled",
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "created_at": datetime.now(zoneinfo.ZoneInfo("Asia/Kolkata")),
+            "updated_at": datetime.now(zoneinfo.ZoneInfo("Asia/Kolkata"))
         }
         result = await self.db.appointments.insert_one(appointment_doc)
         return str(result.inserted_id)
@@ -242,7 +243,7 @@ class DatabaseService:
     async def update_appointment(self, appointment_id: str, update_data: dict) -> bool:
         """Update an appointment"""
         try:
-            update_data["updated_at"] = datetime.utcnow()
+            update_data["updated_at"] = datetime.now(zoneinfo.ZoneInfo("Asia/Kolkata"))
             result = await self.db.appointments.update_one(
                 {"_id": ObjectId(appointment_id)},
                 {"$set": update_data}

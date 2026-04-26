@@ -8,8 +8,10 @@ from models.user import TokenData
 from services.db_service import db_service
 from services.llm_service import llm_service
 from services.tools_service import tools_service
+from services.query_validator_service import query_validator, GreetingHandler
 from services.auth_service import get_current_user
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import json
 import re
 
@@ -200,13 +202,48 @@ async def send_message(
     if not chat:
         raise HTTPException(status_code=404, detail="Chat not found")
     
+    # Check if the message is a greeting
+    if GreetingHandler.is_greeting(message.content):
+        # Save the user message
+        await db_service.add_message(chat_id, "user", message.content)
+        
+        # Get greeting response
+        greeting_response = GreetingHandler.get_greeting_response(message.content)
+        
+        # Save the greeting response
+        await db_service.add_message(chat_id, "assistant", greeting_response)
+        
+        # Return the greeting response
+        return MessageResponse(
+            role="assistant",
+            content=greeting_response,
+            timestamp=datetime.now(ZoneInfo("Asia/Kolkata"))
+        )
+    
+    # Validate that the query is medical-related
+    is_medical, rejection_message = query_validator.is_medical_query(message.content)
+    
+    if not is_medical:
+        # Save the user message anyway (for history)
+        await db_service.add_message(chat_id, "user", message.content)
+        
+        # Save the rejection response
+        await db_service.add_message(chat_id, "assistant", rejection_message)
+        
+        # Return the rejection response
+        return MessageResponse(
+            role="assistant",
+            content=rejection_message,
+            timestamp=datetime.now(ZoneInfo("Asia/Kolkata"))
+        )
+    
     # Save user message
     await db_service.add_message(chat_id, "user", message.content)
     
     # Update chat title if this is the first message
     if len(chat.get("messages", [])) == 0:
-        # Use first 50 chars of message as title
-        title = message.content[:50] + "..." if len(message.content) > 50 else message.content
+        # Use the complete first message as title
+        title = message.content
         await db_service.update_chat_title(chat_id, title)
     
     # Get last 10 messages for context (needed for multi-step booking flow)
@@ -352,5 +389,5 @@ async def send_message(
     return MessageResponse(
         role="assistant",
         content=assistant_response,
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(ZoneInfo("Asia/Kolkata"))
     )
